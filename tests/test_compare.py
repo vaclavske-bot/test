@@ -20,6 +20,14 @@ lv = {m["product"]["id"]: m["level"] for m in r["matches"]}
 assert lv[b] == "stesso_stabilimento" and lv[d] == "stesso_produttore" and lv[e] == "da_confermare" and g not in lv, lv
 assert [m["level"] for m in r["matches"]] == ["stesso_stabilimento", "stesso_produttore", "da_confermare"]   # ordinati per affidabilità
 assert [m["identical_ingredients"] for m in r["matches"][:2]] == [True, False]
+conf = {m["product"]["id"]: m["confidence"] for m in r["matches"]}
+assert conf[b] == "alta" and conf[d] == "media" and conf[e] == "media", conf       # alta = stesso stabilimento + stessi ingredienti
+assert r["producer_status"] == "registro"
+with server.conn() as c:
+    h = server.insert(c, dict(name="Latte z", brand="Utente", category="latte", manufacturer="Granarolo spa", verification="segnalato_utente"))
+assert {m["product"]["id"]: m["confidence"] for m in server.compare(e)["matches"]}[h] == "bassa"   # solo segnalato da utente
+with server.conn() as c: nope = server.insert(c, dict(name="Misterioso", category="latte"))
+assert server.compare(nope)["producer_status"] == "sconosciuto" and server.compare(nope)["matches"] == []
 assert [o["id"] for o in r["other_categories"]] == [f] and r["other_categories"][0]["level"] == "stesso_produttore"
 assert r["product"]["plant"]["name"] == "GRANAROLO S.P.A."
 assert server.compare(99999) is None

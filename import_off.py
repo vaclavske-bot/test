@@ -14,19 +14,8 @@ Dati OFF = collaborativi: tutto entra come 'da_verificare'.
 """
 import argparse, getpass, http.cookiejar, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 import plants, server
+from brands import RETAILERS, OWN_BRANDS
 
-# tag OFF dell'insegna -> nome visualizzato
-RETAILERS = {"conad": "Conad", "coop": "Coop", "esselunga": "Esselunga",
-             "eurospin": "Eurospin", "top-supermercati": "Top Supermercati", "lidl": "Lidl"}
-# marchi propri (private label) per insegna: lista modificabile, in minuscolo
-OWN_BRANDS = {
- "Conad": ["conad", "verso natura", "sapori & dintorni", "sapori e dintorni", "percorso qualità", "io conad", "la bottega del gusto", "conad bio"],
- "Coop": ["coop", "fior fiore", "vivi verde", "crescendo", "bene.sì", "bene sì", "club 4-14", "origine"],
- "Esselunga": ["esselunga", "esselunga bio", "equilibrio", "smart", "top", "naturama"],
- "Eurospin": ["eurospin", "tre mulini", "alimentari", "land", "mi piace"],
- "Top Supermercati": ["top", "top supermercati"],
- "Lidl": ["lidl", "milbona", "deluxe", "combino", "pilos", "italiamo", "chef select", "freeway", "cien", "bioland", "nixe"],
-}
 FIELDS = ("code,product_name,product_name_it,brands,stores,stores_tags,categories_tags,quantity,"
           "ingredients_text_it,ingredients_text,origins,origins_tags,manufacturing_places,emb_codes,link,countries_tags")
 

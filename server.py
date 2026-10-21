@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS products (
   origin_status TEXT DEFAULT 'non_dichiarata', -- italia|ue|extra_ue|misto|non_dichiarata
   packaged_in TEXT,                -- paese di confezionamento
   manufacturer TEXT, manufacturer_address TEXT, plant_code TEXT, -- bollo CE / stabilimento
-  fao_area TEXT, species TEXT, fish_note TEXT,
+  processed_in TEXT,               -- paese di lavorazione
+  fao_area TEXT, species TEXT, fishing_method TEXT, fish_note TEXT,
   verification TEXT DEFAULT 'da_verificare', -- verificato|da_verificare|segnalato_utente
   source_url TEXT, source_note TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
@@ -23,13 +24,17 @@ CREATE INDEX IF NOT EXISTS ix_prod_man ON products(manufacturer, category);
 CREATE INDEX IF NOT EXISTS ix_prod_plant ON products(plant_code);
 CREATE TABLE IF NOT EXISTS plants (
   key TEXT PRIMARY KEY, approval TEXT, name TEXT, vat TEXT, tax_code TEXT, address TEXT, sections TEXT, activities TEXT);
+CREATE TABLE IF NOT EXISTS fish_ratings (
+  id INTEGER PRIMARY KEY, species TEXT NOT NULL, fao_area TEXT NOT NULL, method TEXT,
+  rating TEXT NOT NULL CHECK (rating IN ('consigliato','accettabile','sconsigliato')),
+  source TEXT NOT NULL, source_url TEXT, rated_on TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS missing (
   id INTEGER PRIMARY KEY, query TEXT, barcode TEXT, retailer TEXT, note TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP, resolved INTEGER DEFAULT 0);
 """
 FIELDS = ["barcode","name","brand","line","retailer","is_private_label","category","size",
  "price_eur","price_per_unit","unit","ingredients","raw_material_origin","origin_status",
- "packaged_in","manufacturer","manufacturer_address","plant_code","fao_area","species",
+ "packaged_in","processed_in","fishing_method","manufacturer","manufacturer_address","plant_code","fao_area","species",
  "fish_note","verification","source_url","source_note"]
 
 # Aree FAO di pesca: nome ufficiale. Il giudizio sulla sostenibilità dipende da specie+area+attrezzo:
@@ -47,6 +52,9 @@ def conn():
 def init():
     with conn() as c:
         c.executescript(SCHEMA)
+        have = {r["name"] for r in c.execute("pragma table_info(products)")}   # migrazione di DB creati prima
+        for col in ("processed_in", "fishing_method"):
+            if col not in have: c.execute(f"alter table products add column {col} TEXT")
         if c.execute("select count(*) from products").fetchone()[0] == 0:
             seed(c)
 
@@ -67,6 +75,10 @@ def seed(c):
 
 def insert(c, d):
     d = {k: d.get(k) for k in FIELDS if d.get(k) not in (None, "")}
+    if d.get("is_private_label") in (None, "") and d.get("retailer") and d.get("brand"):
+        import brands   # marchio proprio dell'insegna? (elenco da verificare in brands.py)
+        b = d["brand"].lower()
+        d["is_private_label"] = int(any(b == x or b.startswith(x + " ") for x in brands.OWN_BRANDS.get(d["retailer"], [])))
     if d.get("plant_code"):
         import plants   # import locale: plants importa server
         d["plant_code"] = plants.display(plants.canon(d["plant_code"])) or d["plant_code"]
@@ -85,7 +97,27 @@ def search(q):
     for r in rows:
         hay = norm(" ".join(str(r[k] or "") for k in ("name","brand","line","retailer","manufacturer","category","barcode","plant_code")))
         if all(t in hay for t in q): out.append(dict(r))
-    return [with_plant(p) for p in out[:50]]
+    return [enrich(p) for p in out[:50]]
+
+def fish_rating(p):
+    """Giudizio più specifico (zona FAO più precisa, poi metodo) per specie+zona+metodo del prodotto; None se non c'è."""
+    if not (p.get("species") and p.get("fao_area")): return None
+    with conn() as c:
+        rows = [dict(r) for r in c.execute("select * from fish_ratings")]
+    best, best_score = None, -1
+    for r in rows:
+        if norm(r["species"]).split() != norm(p["species"]).split(): continue
+        ra, pa = r["fao_area"].strip(), p["fao_area"].strip()
+        if not (pa == ra or pa.startswith(ra + ".")): continue
+        if r["method"] and norm(r["method"]).split() != norm(p.get("fishing_method")).split(): continue
+        score = len(ra) * 10 + (1 if r["method"] else 0)
+        if score > best_score: best, best_score = r, score
+    return best
+
+def enrich(p):
+    p = with_plant(p)
+    if p.get("species"): p["fish_rating"] = fish_rating(p)
+    return p
 
 def with_plant(p):
     """Aggiunge lo stabilimento dal registro ufficiale (se caricato e se il bollo è noto)."""
@@ -121,25 +153,73 @@ def verdict(a, b):
     if same_man: return "da_confermare", "Stesso produttore dichiarato, ma manca il bollo per confermare lo stabilimento."
     return None, None
 
+def confidence(a, b, lvl, ident):
+    """Livello alta/media/bassa del 'sono lo stesso prodotto?' (regola della Scheda dati)."""
+    if lvl == "stesso_stabilimento":
+        if ident: return "alta", "Stesso codice stabilimento e ingredienti identici."
+        if ident is False: return "media", "Stesso codice stabilimento ma ricetta diversa."
+        return "media", "Stesso codice stabilimento; ingredienti non confrontabili (dati mancanti)."
+    if lvl == "stesso_produttore": return "media", "Stesso produttore ma stabilimenti diversi."
+    if "segnalato_utente" in (a.get("verification"), b.get("verification")):
+        return "bassa", "Produttore solo segnalato da utenti: non verificato."
+    return "media", "Produttore dedotto dalla sola dichiarazione, senza bollo che lo confermi."
+
+def producer_status(p):
+    if p.get("plant"): return "registro"        # identificato dal registro ufficiale tramite bollo
+    if p.get("manufacturer"): return "dichiarato"
+    return "sconosciuto"
+
 def compare(pid):
     """Prodotti dello stesso stabilimento/produttore: stessa categoria in 'matches', altre in 'other_categories'."""
     with conn() as c:
         row = c.execute("select * from products where id=?", (pid,)).fetchone()
         if not row: return None
         everything = [dict(r) for r in c.execute("select * from products where id!=?", (pid,))]
-    p = with_plant(dict(row)); res, other = [], []
+    p = enrich(dict(row)); res, other = [], []
     for r in everything:
-        r = with_plant(r); lvl, txt = verdict(p, r)
+        r = enrich(r); lvl, txt = verdict(p, r)
         if not lvl or lvl == "diversi": continue
         if r["category"] != p["category"]:
             other.append({"id": r["id"], "name": r["name"], "brand": r["brand"], "retailer": r["retailer"],
                           "category": r["category"], "level": lvl}); continue
         same = bool(p["ingredients"] and r["ingredients"])
-        res.append({"product": r, "level": lvl, "verdict": txt,
-                    "identical_ingredients": norm(p["ingredients"]).split() == norm(r["ingredients"]).split() if same else None})
+        ident = norm(p["ingredients"]).split() == norm(r["ingredients"]).split() if same else None
+        cl, ct = confidence(p, r, lvl, ident)
+        res.append({"product": r, "level": lvl, "verdict": txt, "identical_ingredients": ident,
+                    "confidence": cl, "confidence_text": ct})
     order = {"stesso_stabilimento": 0, "stesso_produttore": 1, "da_confermare": 2}
-    res.sort(key=lambda m: order[m["level"]]); other.sort(key=lambda m: order[m["level"]])
-    return {"product": p, "matches": res, "other_categories": other}
+    res.sort(key=lambda m: (order[m["level"]], {"alta": 0, "media": 1, "bassa": 2}[m["confidence"]])); other.sort(key=lambda m: order[m["level"]])
+    return {"product": p, "producer_status": producer_status(p), "matches": res, "other_categories": other}
+
+def lines_overview():
+    """Mappa private label: linee note per insegna + quanto c'è nel database."""
+    import brands
+    out = []
+    with conn() as c:
+        for name in brands.RETAILERS.values():
+            q = lambda sql: c.execute(sql, (name,)).fetchone()[0]
+            found = [r[0] for r in c.execute("select distinct line from products where retailer=? and line is not null order by line", (name,))]
+            out.append({"retailer": name, "known_lines": brands.LINES_TEXT.get(name, ""), "lines_in_db": found,
+                        "products": q("select count(*) from products where retailer=?"),
+                        "private_label": q("select count(*) from products where retailer=? and is_private_label=1"),
+                        "with_producer": q("select count(*) from products where retailer=? and (manufacturer is not null or plant_code is not null)")})
+        stats = {"products": c.execute("select count(*) from products").fetchone()[0],
+                 "with_plant": c.execute("select count(*) from products where plant_code is not null").fetchone()[0],
+                 "plants_registry": c.execute("select count(*) from plants").fetchone()[0],
+                 "fish_ratings": c.execute("select count(*) from fish_ratings").fetchone()[0]}
+    return {"lines": out, "stats": stats}
+
+def add_fish_rating(d):
+    import datetime
+    for k in ("species", "fao_area", "rating", "source"):
+        if not str(d.get(k) or "").strip(): return None, f"{k} richiesto"
+    if d["rating"] not in ("consigliato", "accettabile", "sconsigliato"): return None, "rating non valido"
+    if d["fao_area"].split(".")[0] not in FAO_AREAS: return None, "zona FAO non valida (es. 37 o 37.2)"
+    with conn() as c:
+        cur = c.execute("insert into fish_ratings(species,fao_area,method,rating,source,source_url,rated_on) values (?,?,?,?,?,?,?)",
+                        (d["species"].strip(), d["fao_area"].strip(), (d.get("method") or "").strip() or None, d["rating"],
+                         d["source"].strip(), d.get("source_url") or None, d.get("rated_on") or datetime.date.today().isoformat()))
+    return cur.lastrowid, None
 
 def off_lookup(code):
     """Open Food Facts (se la rete lo consente). Restituisce dict pronto per insert o None."""
@@ -180,6 +260,9 @@ class H(BaseHTTPRequestHandler):
             r = compare(int(m[1])); return self.send(r, 200 if r else 404)
         if u.path == "/favicon.ico": self.send_response(204); return self.end_headers()
         if u.path == "/api/fao": return self.send(FAO_AREAS)
+        if u.path == "/api/lines": return self.send(lines_overview())
+        if u.path == "/api/fish":
+            with conn() as c: return self.send([dict(r) for r in c.execute("select * from fish_ratings order by species, fao_area")])
         if u.path == "/api/missing":
             with conn() as c: return self.send([dict(r) for r in c.execute("select * from missing where resolved=0 order by id desc")])
         path = "index.html" if u.path == "/" else u.path.lstrip("/")
@@ -199,6 +282,9 @@ class H(BaseHTTPRequestHandler):
                 except sqlite3.IntegrityError: return self.send({"error": "barcode già presente"}, 409)
                 if d.get("barcode"): c.execute("update missing set resolved=1 where barcode=?", (d["barcode"],))
             return self.send({"id": pid}, 201)
+        if self.path == "/api/fish":
+            rid, err = add_fish_rating(d)
+            return self.send({"error": err} if err else {"id": rid}, 400 if err else 201)
         if self.path == "/api/missing":
             with conn() as c:
                 c.execute("insert into missing(query,barcode,retailer,note) values (?,?,?,?)",

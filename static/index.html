@@ -1,80 +1,259 @@
-<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Private Label Finder</title>
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Private Label – chi produce cosa</title>
 <style>
-:root{--bg:#fafaf7;--fg:#1d2420;--mut:#667;--card:#fff;--br:#dde;--ok:#1b7f3b;--warn:#b26b00;--bad:#b3261e;--acc:#0b5d4b}
-@media(prefers-color-scheme:dark){:root{--bg:#141816;--fg:#e8ece9;--mut:#9aa;--card:#1d2420;--br:#33403a;--acc:#5fd1b3}}
-*{box-sizing:border-box}body{margin:0;font:16px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
-main{max-width:860px;margin:0 auto;padding:16px}h1{font-size:1.3rem;margin:.2em 0}
-.row{display:flex;gap:8px;flex-wrap:wrap}input,select,textarea,button{font:inherit;padding:9px;border:1px solid var(--br);border-radius:8px;background:var(--card);color:var(--fg)}
-input,textarea{flex:1;min-width:140px}button{cursor:pointer;background:var(--acc);color:#fff;border:0}button.sec{background:var(--card);color:var(--fg);border:1px solid var(--br)}
-.card{background:var(--card);border:1px solid var(--br);border-radius:12px;padding:12px;margin:10px 0}
-.b{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.8rem;color:#fff}.ok{background:var(--ok)}.warn{background:var(--warn)}.bad{background:var(--bad)}.neu{background:#667}
-table{width:100%;border-collapse:collapse}td,th{padding:5px;border-bottom:1px solid var(--br);text-align:left;vertical-align:top;font-size:.92rem}
-.mut{color:var(--mut);font-size:.88rem}video{width:100%;max-height:260px;border-radius:10px;background:#000}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}label{font-size:.82rem;color:var(--mut);display:block}
-.diff{background:rgba(178,107,0,.15)}a{color:var(--acc)}
+:root{--bg:#faf8f4;--card:#fff;--tx:#1d2420;--mu:#5d6761;--bd:#e3ded4;--ac:#1f6b4a;--g:#d9f0e1;--gt:#14532d;--y:#fdf0c4;--yt:#6b4e00;--r:#fadcd8;--rt:#7a1f14;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151a17;--card:#1e2521;--tx:#eceee9;--mu:#9aa59e;--bd:#323b35;--ac:#5fc596;--g:#1b3a2a;--gt:#9be3bd;--y:#3d3410;--yt:#f1d46a;--r:#43201c;--rt:#f4a79d}}
+:root[data-theme="dark"]{--bg:#151a17;--card:#1e2521;--tx:#eceee9;--mu:#9aa59e;--bd:#323b35;--ac:#5fc596;--g:#1b3a2a;--gt:#9be3bd;--y:#3d3410;--yt:#f1d46a;--r:#43201c;--rt:#f4a79d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 Georgia,"Times New Roman",serif}
+main{max-width:920px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:19px;margin:22px 0 8px}h3{margin:0 0 2px;font-size:17px}p{margin:6px 0}.mu{color:var(--mu);font-size:14px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0;font-family:system-ui,sans-serif}
+button,select,input,textarea{font:inherit;font-family:system-ui,sans-serif;font-size:14px}
+button{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer}
+button.on,button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.sm{padding:5px 12px}
+input,select,textarea{padding:8px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);min-width:0}
+.bar{display:flex;gap:8px;flex-wrap:wrap}.bar input{flex:1;min-width:150px}
+.demo{background:var(--y);color:var(--yt);padding:8px 12px;border-radius:8px;font:13px system-ui,sans-serif;margin:12px 0}
+.sc{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:620px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:0}
+.list .card{margin:10px 0}.tag{font:12px system-ui,sans-serif;color:var(--mu)}
+.row{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--bd);font-size:15px}
+.row b{font-family:system-ui,sans-serif;font-weight:600;font-size:13px;color:var(--mu);min-width:96px}
+.row span{text-align:right;overflow-wrap:anywhere}
+.row.dif{background:var(--y);margin:0 -14px;padding-left:14px;padding-right:14px}
+.badge{display:inline-block;padding:4px 10px;border-radius:14px;font:600 13px system-ui,sans-serif;margin:2px 4px 2px 0}
+.b-g{background:var(--g);color:var(--gt)}.b-y{background:var(--y);color:var(--yt)}.b-r{background:var(--r);color:var(--rt)}.b-n{background:var(--bd);color:var(--mu)}
+.verdict{margin-top:12px}.verdict .vt{margin-top:6px}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font:14px system-ui,sans-serif}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd);vertical-align:top}th{color:var(--mu);font-weight:600}
+.pane{display:none}.pane.on{display:block}
+label{display:block;font:12px system-ui,sans-serif;color:var(--mu);margin-bottom:2px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}.fgrid input,.fgrid select{width:100%}
+a{color:var(--ac)}video{width:100%;max-height:260px;border-radius:10px;background:#000;margin-top:8px}
 </style></head><body><main>
-<h1>🛒 Private Label Finder</h1>
-<p class="mut">Chi produce davvero il prodotto che stai per comprare? Cerca per nome, marchio, insegna, produttore o codice a barre.</p>
-<div class="row"><input id="q" placeholder="es. latte Conad bio, Granarolo, 8001234567890…" autofocus>
-<button onclick="doSearch()">Cerca</button><button class="sec" onclick="scan()">📷 Scansiona</button></div>
-<video id="v" hidden playsinline></video><div id="msg" class="mut"></div>
-<div id="res"></div><div id="cmp"></div><div id="add"></div>
+<h1>Private Label: chi produce davvero?</h1>
+<p class="mu">Barcode, bollo ovale e ingredienti per confrontare prodotti a marchio e prodotti di marca. I dati mostrati sono quelli del database locale: se un prodotto non c'è, aggiungilo e resterà per le ricerche successive.</p>
+<nav id="nav">
+<button data-p="p1" class="on">Confronto</button><button data-p="p2">Mappa private label</button><button data-p="p3">Scheda dati</button><button data-p="p4">Ittico</button>
+</nav>
+
+<section id="p1" class="pane on">
+<div class="bar"><input id="q" placeholder="Nome, marchio, insegna, produttore o codice a barre" autofocus>
+<button class="pri" id="go">Cerca</button><button id="scan">📷 Scansiona</button></div>
+<video id="v" hidden playsinline></video><p class="mu" id="msg" role="status"></p>
+<div class="list" id="res"></div>
+<div id="cmpbox"></div>
+<div id="add"></div>
+<h2>Esempi dimostrativi</h2>
+<p class="mu">Per vedere come si legge un confronto anche con il database vuoto. Dati inventati, calcolati nel browser, non salvati.</p>
+<div class="sc" id="sc"></div>
+</section>
+
+<section id="p2" class="pane">
+<p class="mu">Linee a marchio note per insegna. Il fornitore non è indicato di proposito: va ricavato prodotto per prodotto dal bollo e dalle fonti pubbliche. <b>Elenco da verificare e completare</b> prima dell’uso: le linee cambiano spesso, soprattutto per Eurospin e Top. Le colonne «Nel database» sono conteggi reali.</p>
+<p><select id="fil"><option value="">Tutte le insegne</option></select></p>
+<div class="scroll"><table id="map"></table></div>
+</section>
+
+<section id="p3" class="pane">
+<p class="mu">Struttura del database. Ogni dato ha fonte e data di verifica, così si capisce quanto è affidabile. L’ultima colonna dice cosa c’è già in questo prototipo.</p>
+<div class="scroll"><table id="sch"></table></div>
+<h2>Nel database adesso</h2><p id="stats" class="mu">…</p>
+<h2>Regola di confidenza</h2>
+<p><span class="badge b-g">Alta</span> stesso codice stabilimento + ingredienti identici.</p>
+<p><span class="badge b-y">Media</span> stesso codice stabilimento, ricetta diversa; oppure produttore dedotto da una sola fonte.</p>
+<p><span class="badge b-r">Bassa</span> produttore non verificabile o solo segnalato da utenti.</p>
+<h2>Flusso di ricerca</h2>
+<p>Barcode, poi database interno, poi Open Food Facts (pulsante nel modulo di aggiunta), poi lettura dell’etichetta (bollo ovale, «prodotto da»: da sviluppare). Se non trova nulla: l’utente indica insegna e prodotto, e la scheda entra in coda di verifica.</p>
+</section>
+
+<section id="p4" class="pane">
+<p class="mu">Il giudizio dipende da tre chiavi insieme: <b>specie + zona FAO/GSA + attrezzo o allevamento</b>. Qui non c’è nessun giudizio precompilato: ogni voce va inserita con la sua fonte e la sua data (WWF, Seafood Watch, MSC, ASC, GFCM, ISPRA…).</p>
+<div class="scroll"><table id="fish"></table></div>
+<h2>Aggiungi un giudizio</h2>
+<div class="card"><div class="fgrid">
+<div><label>Specie (nome scientifico o comune) *</label><input id="fs"></div>
+<div><label>Zona FAO * (es. 37 o 37.2)</label><input id="fa" list="faol"><datalist id="faol"></datalist></div>
+<div><label>Attrezzo / allevamento</label><input id="fm" placeholder="vuoto = vale per ogni metodo"></div>
+<div><label>Giudizio *</label><select id="fr"><option value="consigliato">Consigliato</option><option value="accettabile">Accettabile</option><option value="sconsigliato">Sconsigliato</option></select></div>
+<div><label>Fonte * (es. Seafood Watch)</label><input id="fo"></div>
+<div><label>Link alla fonte</label><input id="fu"></div>
+<div><label>Data del giudizio</label><input id="fd" type="date"></div></div>
+<p><button class="pri" id="fsave">Salva giudizio</button> <span class="mu" id="fmsg"></span></p></div>
+<p class="mu">Un prodotto ittico mostra il giudizio solo se specie, zona e (se indicato) metodo coincidono; vince la voce più specifica.</p>
+</section>
+
+<p class="mu" style="margin-top:28px">Una somiglianza di stabilimento è un indizio basato su dati pubblici, non una prova che i prodotti siano identici.</p>
+</main>
 <script>
-const $=id=>document.getElementById(id),esc=s=>String(s??'—').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const api=(p,o)=>fetch(p,o).then(r=>r.json());
-const ORI={italia:['🇮🇹 Materia prima italiana','ok'],ue:['🇪🇺 Materia prima UE','warn'],extra_ue:['🌍 Materia prima extra-UE','bad'],misto:['Origine mista UE/non UE','warn'],non_dichiarata:['Origine materia prima non dichiarata','neu']};
-const VER={verificato:['✔ verificato (fonte)','ok'],da_verificare:['⚠ da verificare','warn'],segnalato_utente:['segnalato da utente','neu']};
-const badge=([t,c])=>`<span class="b ${c}">${t}</span>`;
-let last='';
-async function doSearch(code){const q=code||$('q').value.trim();if(!q)return;last=q;$('cmp').innerHTML='';
- const r=await api('/api/search?q='+encodeURIComponent(q));
- $('res').innerHTML=r.map(p=>`<div class="card"><b>${esc(p.brand)} ${esc(p.line||'')}</b> — ${esc(p.name)}
- <div class="mut">${esc(p.retailer)} · ${p.is_private_label?'Private label':'Marchio industriale'} · ${esc(p.size)}${p.price_eur?` · €${p.price_eur}`:''}</div>
- <div>${badge(ORI[p.origin_status]||ORI.non_dichiarata)} ${badge(VER[p.verification]||VER.da_verificare)}</div>
- <div>Produttore: <b>${esc(p.manufacturer)}</b> ${p.plant_code?`(bollo ${esc(p.plant_code)})`:''}</div>
- ${p.plant?`<div class="mut">🏭 Stabilimento (registro Min. Salute): <b>${esc(p.plant.name)}</b> — ${esc(p.plant.address)} · P.IVA ${esc(p.plant.vat)}</div>`:(p.plant_code?'<div class="mut">Bollo non trovato nel registro caricato.</div>':'')}
- ${p.fao_area?`<div>🐟 ${esc(p.species)} — zona FAO ${esc(p.fao_area)}. ${esc(p.fish_note||'')}</div>`:''}
- ${p.source_url?`<div class="mut">Fonte: <a href="${esc(p.source_url)}" target="_blank" rel="noopener">link</a> — ${esc(p.source_note)}</div>`:''}
- <button onclick="compare(${p.id})">Confronta con prodotti dello stesso produttore</button></div>`).join('')||'';
- if(!r.length){$('res').innerHTML='<div class="card">Nessun risultato. Aggiungilo: la prossima ricerca lo troverà.</div>';addForm({name:isNaN(q)?q:'',barcode:isNaN(q)?'':q});
-  api('/api/missing',{method:'POST',body:JSON.stringify({query:q,barcode:isNaN(q)?null:q})});}
- else $('add').innerHTML='<button class="sec" onclick="addForm({})">+ Aggiungi un prodotto mancante</button>';}
-const SEZ={0:'attività generale',1:'carni ungulati',2:'pollame e lagomorfi',3:'selvaggina allevata',4:'selvaggina selvatica',5:'carni macinate/preparazioni',6:'prodotti a base di carne',7:'molluschi bivalvi',8:'prodotti della pesca',9:'latte e latticini',10:'uova',11:'rane e lumache',12:'grassi fusi',13:'stomachi/vesciche/intestini',14:'gelatina',15:'collagene',16:'prodotti altamente raffinati'};
-const LVL={stesso_stabilimento:['🟢 Stesso stabilimento','ok'],stesso_produttore:['🟡 Stesso produttore, altro stabilimento','warn'],da_confermare:['🟠 Stesso produttore, stabilimento da confermare','warn']};
-const money=(v,u)=>v==null?null:'€'+v+(u?'/'+u:'');
-const ROWS=[['Fabbricazione',null],
- ['Produttore',p=>p.manufacturer||(p.plant&&p.plant.name)],['P.IVA',p=>p.plant&&p.plant.vat],['Bollo CE',p=>p.plant_code],
- ['Stabilimento (registro)',p=>p.plant&&p.plant.name],['Indirizzo stabilimento',p=>(p.plant&&p.plant.address)||p.manufacturer_address],
- ['Riconosciuto per',p=>p.plant&&p.plant.sections&&p.plant.sections.split(',').map(x=>SEZ[x]||x).join(', ')],['Confezionato in',p=>p.packaged_in],
- ['Origine',null],['Materia prima',p=>(ORI[p.origin_status]||[''])[0]],['Dettaglio origine',p=>p.raw_material_origin],
- ['Prodotto',null],['Formato',p=>p.size],['Prezzo',p=>money(p.price_eur)],['Prezzo/unità',p=>money(p.price_per_unit,p.unit)],['Ingredienti',p=>p.ingredients]];
-async function compare(id){const r=await api('/api/compare/'+id);const P=[r.product,...r.matches.map(m=>m.product)];
- const head=P.map((p,i)=>`<th>${i?'':'<small>(scelto)</small><br>'}${esc(p.brand)} ${esc(p.line||'')}<br><small class="mut">${esc(p.retailer)}</small></th>`).join('');
- const body=ROWS.map(([lab,f])=>{if(!f)return `<tr><th colspan=${P.length+1} style="background:var(--bg)">${lab}</th></tr>`;
-  const v=P.map(p=>{const x=f(p);return x===null||x===undefined||x===''?null:String(x)});const set=new Set(v.filter(x=>x!==null));
-  return `<tr class="${set.size>1?'diff':''}"><td class="mut">${lab}</td>${v.map(x=>`<td>${x===null?'<span class="mut">n.d.</span>':esc(x)}</td>`).join('')}</tr>`}).join('');
- const verd=r.matches.map(m=>`<div>${badge(LVL[m.level])} <b>${esc(m.product.brand)}</b>: ${esc(m.verdict)}${m.identical_ingredients===null?'':m.identical_ingredients?' Ingredienti identici.':' Ingredienti diversi.'}</div>`).join('');
- const oth=r.other_categories.length?`<p class="mut">Altri prodotti dello stesso produttore/stabilimento (altre categorie): ${r.other_categories.map(o=>`${esc(o.brand)} ${esc(o.name)} (${esc(o.category)})`).join('; ')}</p>`:'';
- $('cmp').innerHTML=`<div class="card"><h3>Confronto dati di fabbricazione</h3>${verd||'<div class="mut">Nessun altro prodotto della stessa categoria con produttore o stabilimento coincidente.</div>'}
- <p class="mut">Stesso stabilimento non significa stessa ricetta: le righe evidenziate sono quelle che differiscono.</p>
- <div style="overflow-x:auto"><table><tr><th></th>${head}</tr>${body}</table></div>${oth}</div>`;}
-function addForm(d){const f=(k,l,t='input')=>`<div><label>${l}</label><${t} id="f_${k}" value="${esc(d[k]||'').replace('—','')}"></${t}></div>`;
- $('add').innerHTML=`<div class="card"><h3>Aggiungi prodotto</h3><div class="grid">${f('name','Nome *')}${f('barcode','Codice a barre')}${f('brand','Marchio')}${f('line','Linea (es. Verso Natura)')}${f('retailer','Supermercato')}${f('category','Categoria (es. latte)')}${f('size','Formato')}${f('price_eur','Prezzo €')}${f('price_per_unit','Prezzo/unità')}${f('unit','Unità (kg/L)')}
- ${f('manufacturer','Produttore (da etichetta: "prodotto da…")')}${f('plant_code','Bollo CE / sito (es. IT 03 74 CE)')}${f('packaged_in','Confezionato in')}${f('raw_material_origin','Origine materia prima (testo etichetta)')}
- <div><label>Origine</label><select id="f_origin_status">${Object.entries(ORI).map(([k,v])=>`<option value="${k}">${v[0]}</option>`)}</select></div>
- ${f('species','Specie (ittico)')}${f('fao_area','Zona FAO (es. 37.2)')}</div>
- <label>Ingredienti</label><textarea id="f_ingredients" rows=2></textarea><div class="row" style="margin-top:8px"><button onclick="save()">Salva</button>
- <button class="sec" onclick="importOff()">Importa da Open Food Facts (da codice a barre)</button></div></div>`;}
-async function save(){const d={};document.querySelectorAll('[id^=f_]').forEach(e=>{if(e.value)d[e.id.slice(2)]=e.value});
- d.is_private_label=d.line||/conad|coop|esselunga|eurospin|lidl|top/i.test(d.brand||'')?1:0;
- ['price_eur','price_per_unit'].forEach(k=>d[k]&&(d[k]=parseFloat(String(d[k]).replace(',','.'))));
- const r=await api('/api/product',{method:'POST',body:JSON.stringify(d)});$('msg').textContent=r.error||'Salvato ✔';if(r.id){$('add').innerHTML='';doSearch(d.barcode||d.name)}}
-async function importOff(){const b=$('f_barcode').value;const r=await api('/api/import-off',{method:'POST',body:JSON.stringify({barcode:b})});
- if(r.error)return $('msg').textContent='Import non riuscito: '+r.error;addForm(r);$('f_ingredients').value=r.ingredients||''}
-async function scan(){if(!('BarcodeDetector' in window))return $('msg').textContent='Scanner non supportato da questo browser: digita il codice a barre (Chrome Android lo supporta).';
- const v=$('v');v.hidden=false;const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});v.srcObject=s;await v.play();
- const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a']});
- const t=setInterval(async()=>{const c=await det.detect(v).catch(()=>[]);if(c.length){clearInterval(t);s.getTracks().forEach(x=>x.stop());v.hidden=true;$('q').value=c[0].rawValue;doSearch(c[0].rawValue)}},400)}
-$('q').addEventListener('keydown',e=>e.key==='Enter'&&doSearch());
-</script></main></body></html>
+const post=(p,d)=>api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+const ORI={italia:'Italia',ue:'UE',extra_ue:'Extra-UE',misto:'Mista UE/non UE',non_dichiarata:null};
+const CONF={alta:['Confidenza alta','b-g'],media:['Confidenza media','b-y'],bassa:['Confidenza bassa','b-r']};
+const RAT={consigliato:'b-g',accettabile:'b-y',sconsigliato:'b-r'};
+const VER={verificato:['✔ verificato','b-g'],da_verificare:['da verificare','b-y'],segnalato_utente:['segnalato da utente','b-n']};
+const badge=(t,c)=>`<span class="badge ${c}">${esc(t)}</span>`;
+
+/* ---------- vista di un prodotto (stessa per dati reali e demo) ---------- */
+function view(p){
+  const raw=[ORI[p.origin_status],p.raw_material_origin].filter(Boolean).join(' · ')||null;
+  return {title:p.name,sub:[p.brand,p.line].filter((x,i,a)=>x&&a.indexOf(x)===i).join(' '),retailer:p.retailer,
+    stab:p.plant_code?p.plant_code+(p.plant?' ('+p.plant.name+')':''):(p.manufacturer?p.manufacturer+' (dichiarato)':null),
+    prod:p.manufacturer||(p.plant&&p.plant.name)||null,addr:(p.plant&&p.plant.address)||p.manufacturer_address||null,
+    ing:p.ingredients,pack:p.packaged_in,proc:p.processed_in,raw,
+    price:p.price_eur!=null?'€ '+Number(p.price_eur).toFixed(2)+(p.price_per_unit!=null?` · € ${p.price_per_unit}/${p.unit||''}`:''):null,
+    fish:p.species?[p.species,p.fao_area&&'FAO '+p.fao_area,p.fishing_method].filter(Boolean).join(' · '):null,
+    rating:p.species?(p.fish_rating||'none'):undefined,ver:p.verification,src:p.source_url,note:p.source_note,pl:p.is_private_label};
+}
+const ROWS=[['Stabilimento','stab'],['Produttore','prod'],['Indirizzo','addr'],['Ingredienti','ing'],['Confezionato','pack'],['Lavorato','proc'],['Materia prima','raw'],['Prezzo','price'],['Ittico','fish']];
+function card(v,o){
+  const rows=ROWS.filter(([,k])=>v[k]||(o&&o[k])).map(([l,k])=>{
+    const dif=o&&v[k]&&o[k]&&String(v[k]).toLowerCase()!==String(o[k]).toLowerCase();
+    return `<div class="row${dif?' dif':''}"><b>${l}</b><span>${v[k]?esc(v[k]):'<span class="mu">n.d.</span>'}</span></div>`}).join('');
+  let fish='';
+  if(v.rating&&v.rating!=='none')fish=`<div class="row"><b>Giudizio</b><span>${badge(v.rating.rating,RAT[v.rating.rating])}<br><span class="mu">${esc(v.rating.source)}${v.rating.rated_on?', '+esc(v.rating.rated_on):''}${v.rating.fao_area?' · zona '+esc(v.rating.fao_area):''}</span></span></div>`;
+  else if(v.rating==='none')fish=`<div class="row"><b>Giudizio</b><span class="mu">nessun giudizio nel database per questa specie/zona/metodo</span></div>`;
+  const ver=v.ver?`<div class="row"><b>Dato</b><span>${badge(...VER[v.ver]||VER.da_verificare)}${v.src?` <a href="${esc(v.src)}" target="_blank" rel="noopener">fonte</a>`:''}</span></div>`:'';
+  return `<div class="card"><h3>${esc(v.title)}</h3><div class="tag">${esc(v.sub)}${v.sub&&v.retailer?' · ':''}${esc(v.retailer)}${v.pl?' · private label':''}</div>${rows}${fish}${ver}${v.note?`<p class="mu">${esc(v.note)}</p>`:''}</div>`;
+}
+function verdict(conf,text,extra,demo){
+  const [l,c]=CONF[conf]||['Nessun confronto','b-n'];
+  return `<div class="verdict card"><span class="badge ${c}">${l}</span><p class="vt">${esc(text)}</p>${extra?`<p class="mu">${esc(extra)}</p>`:''}</div>`;
+}
+
+/* ---------- ricerca e confronto ---------- */
+let CUR=null;
+async function doSearch(q){
+  q=(q||$('#q').value).trim(); if(!q)return; $('#q').value=q; $('#cmpbox').innerHTML=''; $('#msg').textContent='';
+  const r=await api('/api/search?q='+encodeURIComponent(q));
+  $('#res').innerHTML=r.map(p=>{const v=view(p);return `<div class="card"><h3>${esc(v.title)}</h3><div class="tag">${esc(v.sub)} · ${esc(v.retailer)||'—'} · ${p.is_private_label?'private label':'marchio industriale'}${p.size?' · '+esc(p.size):''}</div>
+    <p>${v.prod?'Produttore: <b>'+esc(v.prod)+'</b>':'<span class="mu">Produttore non indicato</span>'}${p.plant_code?' · bollo '+esc(p.plant_code):''}</p>
+    <p>${badge(...(VER[p.verification]||VER.da_verificare))}${v.raw?badge(v.raw,'b-n'):''}</p>
+    <button class="pri sm" onclick="compare(${p.id})">Confronta con lo stesso produttore</button></div>`}).join('');
+  if(!r.length){
+    $('#res').innerHTML='<div class="card">Nessun risultato. Aggiungilo qui sotto: la prossima ricerca lo troverà.</div>';
+    addForm({name:/^\d{6,}$/.test(q)?'':q,barcode:/^\d{6,}$/.test(q)?q:''});
+    post('/api/missing',{query:q,barcode:/^\d{6,}$/.test(q)?q:null});
+  } else $('#add').innerHTML='<p><button class="sm" onclick="addForm({})">+ Aggiungi un prodotto mancante</button></p>';
+}
+async function compare(id,idx=0){
+  const r=await api('/api/compare/'+id); CUR=r; const a=view(r.product);
+  if(!r.matches.length){
+    const unknown=r.producer_status==='sconosciuto';
+    $('#cmpbox').innerHTML=`<h2>Confronto</h2><div class="grid">${card(a)}</div>`+(unknown
+      ?verdict('bassa','Il produttore non risulta. Non si può dire con chi condivida lo stabilimento.','Serve il bollo (IT … CE) o la dicitura «prodotto da» dall’etichetta: aggiungili alla scheda.')
+      :verdict(null,'Nessun altro prodotto della stessa categoria con produttore o stabilimento coincidente nel database.','Importa o aggiungi altri prodotti per trovare equivalenti.'))+others(r);
+    return $('#cmpbox').scrollIntoView({behavior:'smooth'});
+  }
+  const m=r.matches[idx], b=view(m.product);
+  const sel=r.matches.length>1?`<p><select id="cs" onchange="compare(${id},this.value)">${r.matches.map((x,i)=>`<option value="${i}" ${i==idx?'selected':''}>${esc(x.product.brand||'')} ${esc(x.product.line||'')} — ${esc(x.product.retailer||'')}</option>`).join('')}</select> <span class="mu">${r.matches.length} prodotti confrontabili</span></p>`:'';
+  const pa=a.price&&b.price&&r.product.price_eur&&m.product.price_eur?` Differenza di prezzo: ${((m.product.price_eur-r.product.price_eur)/r.product.price_eur*100).toFixed(0)}% rispetto al primo.`:'';
+  $('#cmpbox').innerHTML=`<h2>Confronto</h2>${sel}<div class="grid">${card(a,b)}${card(b,a)}</div>`+verdict(m.confidence,m.verdict+' '+m.confidence_text+pa,'Le righe evidenziate sono quelle che differiscono. Stesso stabilimento non significa stessa ricetta.')+others(r);
+  $('#cmpbox').scrollIntoView({behavior:'smooth'});
+}
+const others=r=>r.other_categories.length?`<p class="mu">Altri prodotti dello stesso produttore o stabilimento (altre categorie): ${r.other_categories.map(o=>esc((o.brand||'')+' '+o.name+(o.category?' ('+o.category+')':''))).join('; ')}</p>`:'';
+
+/* ---------- esempi dimostrativi (inventati, solo nel browser) ---------- */
+const D=[
+{n:"Stesso stabilimento, stessa ricetta",c:"alta",
+ a:{t:"Latte UHT bio intero",m:"Marca produttore",s:"Supermercato A",st:"IT 0000 CE (Azienda Esempio S.p.A.)",ing:"Latte intero bio",o1:"Italia",o2:"Italia",o3:"Italia (latte)",p:"€ 1.89"},
+ b:{t:"Latte UHT bio intero",m:"Linea bio insegna",s:"Supermercato B",st:"IT 0000 CE (Azienda Esempio S.p.A.)",ing:"Latte intero bio",o1:"Italia",o2:"Italia",o3:"Italia (latte)",p:"€ 1.45"},
+ v:"Stesso codice stabilimento e stessi ingredienti. Prodotti con ogni probabilità equivalenti: la differenza è soprattutto di marchio e di prezzo (−23%)."},
+{n:"Stesso stabilimento, ricetta diversa",c:"media",
+ a:{t:"Biscotti frollini",m:"Marca produttore",s:"Supermercato A",st:"Stabilimento X (da “Prodotto da”)",ing:"Farina, burro, zucchero, uova",o1:"Italia",o2:"Italia",o3:"UE e non UE",p:"€ 3.20"},
+ b:{t:"Biscotti frollini",m:"Linea economica",s:"Supermercato C",st:"Stabilimento X (da “Prodotto da”)",ing:"Farina, olio di palma, zucchero, uova",o1:"Italia",o2:"Italia",o3:"UE e non UE",p:"€ 1.69"},
+ v:"Stesso stabilimento ma ricetta diversa: il burro diventa olio di palma. Il prezzo più basso riflette ingredienti differenti, non solo il marchio."},
+{n:"Produttore non verificabile",c:"bassa",
+ a:{t:"Passata di pomodoro",m:"Marca produttore",s:"Supermercato A",st:"Verificato",ing:"Pomodoro 100%",o1:"Italia",o2:"Italia",o3:"Italia",p:"€ 1.40"},
+ b:{t:"Passata di pomodoro",m:"Linea insegna",s:"Supermercato D",st:"Non indicato in etichetta",ing:"Pomodoro 100%",o1:"Italia",o2:"Italia",o3:"Non specificata",p:"€ 0.99"},
+ v:"Il produttore della linea insegna non risulta. Non si può dire se sia lo stesso. Aiuta una foto dell’etichetta: l’utente può segnalare il prodotto e mandarlo in verifica."}];
+const dv=x=>({title:x.t,sub:x.m,retailer:x.s,stab:x.st,ing:x.ing,pack:x.o1,proc:x.o2,raw:x.o3,price:x.p});
+function showDemo(i){
+  document.querySelectorAll('#sc button').forEach((b,j)=>b.classList.toggle('on',i==j));
+  const d=D[i],a=dv(d.a),b=dv(d.b);
+  $('#res').innerHTML='';$('#add').innerHTML='';
+  $('#cmpbox').innerHTML=`<div class="demo">Dati dimostrativi inventati: nomi, codici e prezzi servono solo a mostrare la schermata e non descrivono prodotti reali.</div><div class="grid">${card(a,b)}${card(b,a)}</div>`+verdict(d.c,d.v);
+  $('#cmpbox').scrollIntoView({behavior:'smooth'});
+}
+D.forEach((d,i)=>{const b=document.createElement('button');b.textContent=d.n;b.onclick=()=>showDemo(i);$('#sc').appendChild(b)});
+
+/* ---------- aggiunta prodotto ---------- */
+function addForm(d){
+  const f=(k,l)=>`<div><label>${l}</label><input id="f_${k}" value="${esc(d[k]||'')}"></div>`;
+  $('#add').innerHTML=`<h2>Aggiungi prodotto</h2><div class="card"><div class="fgrid">${f('name','Nome *')}${f('barcode','Codice a barre')}${f('brand','Marchio')}${f('line','Linea (es. Verso Natura)')}${f('retailer','Supermercato')}${f('category','Categoria (es. latte)')}${f('size','Formato')}${f('price_eur','Prezzo €')}${f('price_per_unit','Prezzo/unità')}${f('unit','Unità (kg/L)')}
+  ${f('manufacturer','Produttore («prodotto da…»)')}${f('plant_code','Bollo CE (es. IT 3 74 CE)')}${f('packaged_in','Confezionato in')}${f('processed_in','Lavorato in')}${f('raw_material_origin','Origine materia prima (testo etichetta)')}
+  <div><label>Origine materia prima</label><select id="f_origin_status">${Object.entries(ORI).map(([k,v])=>`<option value="${k}">${v||'Non dichiarata'}</option>`).join('')}</select></div>
+  ${f('species','Specie (ittico)')}${f('fao_area','Zona FAO (es. 37.2)')}${f('fishing_method','Attrezzo / allevamento')}</div>
+  <p><label>Ingredienti</label><textarea id="f_ingredients" rows="2" style="width:100%">${esc(d.ingredients||'')}</textarea></p>
+  <p><button class="pri" onclick="save()">Salva</button> <button onclick="importOff()">Importa da Open Food Facts (dal codice a barre)</button></p></div>`;
+}
+async function save(){
+  const d={};document.querySelectorAll('[id^=f_]').forEach(e=>{if(e.value)d[e.id.slice(2)]=e.value});
+  ['price_eur','price_per_unit'].forEach(k=>d[k]&&(d[k]=parseFloat(String(d[k]).replace(',','.'))));
+  const r=await post('/api/product',d); $('#msg').textContent=r.error||'Salvato ✔';
+  if(r.id){$('#add').innerHTML='';doSearch(d.barcode||d.name)}
+}
+async function importOff(){
+  const b=$('#f_barcode').value; if(!b)return $('#msg').textContent='Inserisci prima il codice a barre.';
+  const r=await post('/api/import-off',{barcode:b}); if(r.error)return $('#msg').textContent='Import non riuscito: '+r.error; addForm(r);
+}
+async function scan(){
+  if(!('BarcodeDetector' in window))return $('#msg').textContent='Scanner non supportato da questo browser: digita il codice a barre (Chrome su Android lo supporta).';
+  try{const v=$('#v');v.hidden=false;const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});v.srcObject=s;await v.play();
+    const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a']});
+    const t=setInterval(async()=>{const c=await det.detect(v).catch(()=>[]);if(c.length){clearInterval(t);s.getTracks().forEach(x=>x.stop());v.hidden=true;doSearch(c[0].rawValue)}},400);
+  }catch(e){$('#v').hidden=true;$('#msg').textContent='Fotocamera non disponibile: '+e.message}
+}
+$('#go').onclick=()=>doSearch();$('#scan').onclick=scan;$('#q').addEventListener('keydown',e=>e.key==='Enter'&&doSearch());
+
+/* ---------- mappa private label ---------- */
+let LINES=[];
+const sel=$('#fil');
+function drawMap(){
+  const f=sel.value;
+  $('#map').innerHTML='<tr><th>Insegna</th><th>Linee a marchio</th><th>Nel database</th><th>Stato</th></tr>'+LINES.filter(r=>!f||r.retailer==f).map(r=>`<tr><td><b>${esc(r.retailer)}</b></td>
+  <td>${esc(r.known_lines)}${r.lines_in_db.length?`<br><span class="mu">Trovate nel database: ${r.lines_in_db.map(esc).join(', ')}</span>`:''}</td>
+  <td>${r.products} prodotti<br><span class="mu">${r.private_label} private label · ${r.with_producer} con produttore</span></td><td>Da verificare</td></tr>`).join('');
+}
+sel.onchange=drawMap;
+async function loadLines(){const r=await api('/api/lines');LINES=r.lines;
+  if(sel.options.length<2)LINES.forEach(l=>sel.insertAdjacentHTML('beforeend',`<option>${esc(l.retailer)}</option>`));drawMap();
+  $('#stats').textContent=`${r.stats.products} prodotti · ${r.stats.with_plant} con bollo CE · ${r.stats.plants_registry} stabilimenti nel registro del Ministero · ${r.stats.fish_ratings} giudizi ittici.`;}
+
+/* ---------- scheda dati ---------- */
+const S=[["Prodotto","EAN, nome, marca, linea, categoria, formato, ingredienti, allergeni, foto etichetta","Parziale: mancano allergeni e foto"],
+["Insegna","id, nome, formato (super, discount), sito","Parziale: nome insegna sul prodotto, elenco in brands.py"],
+["Linea","id, insegna, nome linea, tipo (bio, base, premium)","Parziale: nome linea sul prodotto"],
+["Prezzo","prodotto, insegna, data, prezzo, prezzo/kg o /l, fonte (utente, volantino)","Parziale: un prezzo per prodotto, senza storico"],
+["Stabilimento","codice bollo (IT … CE), ragione sociale, indirizzo, fonte (elenco Ministero della Salute)","Sì (plants.py)"],
+["Origine","prodotto, livello (confezionamento, lavorazione, materia prima), paese, dicitura originale","Sì: confezionato, lavorato, materia prima"],
+["Ittico","prodotto, specie, zona FAO, sottozona GSA, metodo (pesca, allevamento), certificazione","Parziale: manca GSA e certificazione"],
+["Giudizio ittico","specie, zona, attrezzo, esito, fonte, data","Sì: fonte obbligatoria"],
+["Confronto","prodotto A, prodotto B, % ingredienti uguali, stesso stabilimento (sì/no), confidenza, data verifica","Calcolato al volo, non salvato"],
+["Segnalazione","utente, insegna, prodotto, foto, stato (in coda, verificato, respinto)","Parziale: coda dei prodotti mancanti, senza foto"]];
+$('#sch').innerHTML='<tr><th>Tabella</th><th>Campi</th><th>Nel prototipo</th></tr>'+S.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+
+/* ---------- ittico ---------- */
+async function loadFish(){
+  const [rows,fao]=await Promise.all([api('/api/fish'),api('/api/fao')]);
+  $('#faol').innerHTML=Object.entries(fao).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join('');
+  $('#fish').innerHTML='<tr><th>Specie</th><th>Zona</th><th>Metodo</th><th>Giudizio</th><th>Fonte</th></tr>'+(rows.map(r=>`<tr><td>${esc(r.species)}</td><td>FAO ${esc(r.fao_area)}</td><td>${esc(r.method||'qualsiasi')}</td><td>${badge(r.rating,RAT[r.rating])}</td><td>${r.source_url?`<a href="${esc(r.source_url)}" target="_blank" rel="noopener">${esc(r.source)}</a>`:esc(r.source)}<br><span class="mu">${esc(r.rated_on||'')}</span></td></tr>`).join('')||'<tr><td colspan="5" class="mu">Nessun giudizio inserito.</td></tr>');
+}
+$('#fsave').onclick=async()=>{
+  const r=await post('/api/fish',{species:$('#fs').value,fao_area:$('#fa').value,method:$('#fm').value,rating:$('#fr').value,source:$('#fo').value,source_url:$('#fu').value,rated_on:$('#fd').value});
+  $('#fmsg').textContent=r.error||'Salvato ✔'; if(r.id){['fs','fa','fm','fo','fu','fd'].forEach(i=>$('#'+i).value='');loadFish()}
+};
+
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x==b));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==b.dataset.p));
+  if(b.dataset.p=='p2'||b.dataset.p=='p3')loadLines(); if(b.dataset.p=='p4')loadFish();
+});
+</script></body></html>
