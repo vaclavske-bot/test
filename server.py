@@ -156,6 +156,7 @@ class H(BaseHTTPRequestHandler):
         m = re.fullmatch(r"/api/compare/(\d+)", u.path)
         if m:
             r = compare(int(m[1])); return self.send(r, 200 if r else 404)
+        if u.path == "/favicon.ico": self.send_response(204); return self.end_headers()
         if u.path == "/api/fao": return self.send(FAO_AREAS)
         if u.path == "/api/missing":
             with conn() as c: return self.send([dict(r) for r in c.execute("select * from missing where resolved=0 order by id desc")])
