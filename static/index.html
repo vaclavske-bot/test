@@ -40,12 +40,25 @@ async function doSearch(code){const q=code||$('q').value.trim();if(!q)return;las
  if(!r.length){$('res').innerHTML='<div class="card">Nessun risultato. Aggiungilo: la prossima ricerca lo troverà.</div>';addForm({name:isNaN(q)?q:'',barcode:isNaN(q)?'':q});
   api('/api/missing',{method:'POST',body:JSON.stringify({query:q,barcode:isNaN(q)?null:q})});}
  else $('add').innerHTML='<button class="sec" onclick="addForm({})">+ Aggiungi un prodotto mancante</button>';}
-async function compare(id){const r=await api('/api/compare/'+id);
- const rows=r.matches.map(m=>{const p=m.product;const d=m.diff;const c=k=>d[k]?'class="diff"':'';return `<tr><td><b>${esc(p.brand)} ${esc(p.line||'')}</b><br>${esc(p.retailer)}</td>
- <td ${c('price_eur')}>${p.price_eur!=null?'€'+esc(p.price_eur):'prezzo n.d.'}${p.price_per_unit!=null?`<br>€${esc(p.price_per_unit)}/${esc(p.unit||'')}`:''}</td><td ${c('origin_status')}>${esc((ORI[p.origin_status]||[''])[0])}<br>${esc(p.raw_material_origin)}</td>
- <td ${c('ingredients')}>${esc(p.ingredients)}</td><td>${m.identical_ingredients===null?'ingredienti non confrontabili':m.identical_ingredients?'ingredienti identici':'ingredienti diversi'}</td></tr>`}).join('');
- $('cmp').innerHTML=`<div class="card"><h3>Confronto: ${esc(r.product.brand)} ${esc(r.product.line||'')}</h3><div class="mut">Criterio: ${esc(r.basis)}. Stesso produttore ≠ stessa ricetta: controlla le celle evidenziate.</div>
- <div style="overflow-x:auto"><table><tr><th>Prodotto</th><th>Prezzo</th><th>Origine</th><th>Ingredienti</th><th>Esito</th></tr>${rows||'<tr><td colspan=5>Nessun altro prodotto dello stesso produttore e categoria nel database.</td></tr>'}</table></div></div>`;}
+const SEZ={0:'attività generale',1:'carni ungulati',2:'pollame e lagomorfi',3:'selvaggina allevata',4:'selvaggina selvatica',5:'carni macinate/preparazioni',6:'prodotti a base di carne',7:'molluschi bivalvi',8:'prodotti della pesca',9:'latte e latticini',10:'uova',11:'rane e lumache',12:'grassi fusi',13:'stomachi/vesciche/intestini',14:'gelatina',15:'collagene',16:'prodotti altamente raffinati'};
+const LVL={stesso_stabilimento:['🟢 Stesso stabilimento','ok'],stesso_produttore:['🟡 Stesso produttore, altro stabilimento','warn'],da_confermare:['🟠 Stesso produttore, stabilimento da confermare','warn']};
+const money=(v,u)=>v==null?null:'€'+v+(u?'/'+u:'');
+const ROWS=[['Fabbricazione',null],
+ ['Produttore',p=>p.manufacturer||(p.plant&&p.plant.name)],['P.IVA',p=>p.plant&&p.plant.vat],['Bollo CE',p=>p.plant_code],
+ ['Stabilimento (registro)',p=>p.plant&&p.plant.name],['Indirizzo stabilimento',p=>(p.plant&&p.plant.address)||p.manufacturer_address],
+ ['Riconosciuto per',p=>p.plant&&p.plant.sections&&p.plant.sections.split(',').map(x=>SEZ[x]||x).join(', ')],['Confezionato in',p=>p.packaged_in],
+ ['Origine',null],['Materia prima',p=>(ORI[p.origin_status]||[''])[0]],['Dettaglio origine',p=>p.raw_material_origin],
+ ['Prodotto',null],['Formato',p=>p.size],['Prezzo',p=>money(p.price_eur)],['Prezzo/unità',p=>money(p.price_per_unit,p.unit)],['Ingredienti',p=>p.ingredients]];
+async function compare(id){const r=await api('/api/compare/'+id);const P=[r.product,...r.matches.map(m=>m.product)];
+ const head=P.map((p,i)=>`<th>${i?'':'<small>(scelto)</small><br>'}${esc(p.brand)} ${esc(p.line||'')}<br><small class="mut">${esc(p.retailer)}</small></th>`).join('');
+ const body=ROWS.map(([lab,f])=>{if(!f)return `<tr><th colspan=${P.length+1} style="background:var(--bg)">${lab}</th></tr>`;
+  const v=P.map(p=>{const x=f(p);return x===null||x===undefined||x===''?null:String(x)});const set=new Set(v.filter(x=>x!==null));
+  return `<tr class="${set.size>1?'diff':''}"><td class="mut">${lab}</td>${v.map(x=>`<td>${x===null?'<span class="mut">n.d.</span>':esc(x)}</td>`).join('')}</tr>`}).join('');
+ const verd=r.matches.map(m=>`<div>${badge(LVL[m.level])} <b>${esc(m.product.brand)}</b>: ${esc(m.verdict)}${m.identical_ingredients===null?'':m.identical_ingredients?' Ingredienti identici.':' Ingredienti diversi.'}</div>`).join('');
+ const oth=r.other_categories.length?`<p class="mut">Altri prodotti dello stesso produttore/stabilimento (altre categorie): ${r.other_categories.map(o=>`${esc(o.brand)} ${esc(o.name)} (${esc(o.category)})`).join('; ')}</p>`:'';
+ $('cmp').innerHTML=`<div class="card"><h3>Confronto dati di fabbricazione</h3>${verd||'<div class="mut">Nessun altro prodotto della stessa categoria con produttore o stabilimento coincidente.</div>'}
+ <p class="mut">Stesso stabilimento non significa stessa ricetta: le righe evidenziate sono quelle che differiscono.</p>
+ <div style="overflow-x:auto"><table><tr><th></th>${head}</tr>${body}</table></div>${oth}</div>`;}
 function addForm(d){const f=(k,l,t='input')=>`<div><label>${l}</label><${t} id="f_${k}" value="${esc(d[k]||'').replace('—','')}"></${t}></div>`;
  $('add').innerHTML=`<div class="card"><h3>Aggiungi prodotto</h3><div class="grid">${f('name','Nome *')}${f('barcode','Codice a barre')}${f('brand','Marchio')}${f('line','Linea (es. Verso Natura)')}${f('retailer','Supermercato')}${f('category','Categoria (es. latte)')}${f('size','Formato')}${f('price_eur','Prezzo €')}${f('price_per_unit','Prezzo/unità')}${f('unit','Unità (kg/L)')}
  ${f('manufacturer','Produttore (da etichetta: "prodotto da…")')}${f('plant_code','Bollo CE / sito (es. IT 03 74 CE)')}${f('packaged_in','Confezionato in')}${f('raw_material_origin','Origine materia prima (testo etichetta)')}

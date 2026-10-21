@@ -5,7 +5,7 @@ Scopri chi produce davvero un prodotto di supermercato e confrontalo con quello 
 ## Avvio
     python3 server.py          # poi apri http://localhost:8000   (PORT=9000 per cambiare porta)
 
-Serve solo Python 3. Il database (pl.db) si crea al primo avvio.
+Serve solo Python 3. Il database è SQLite (file pl.db, creato al primo avvio; `PL_DB=/percorso/altro.db` per cambiarlo).
 
 ## Popolare il database da Open Food Facts
     python3 import_off.py --retailer conad --max-pages 5

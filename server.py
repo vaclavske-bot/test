@@ -42,7 +42,7 @@ FAO_AREAS = {"21":"Atlantico nord-occidentale","27":"Atlantico nord-orientale","
  "87":"Pacifico sud-orientale"}
 
 def conn():
-    c = sqlite3.connect(DB); c.row_factory = sqlite3.Row; return c
+    c = sqlite3.connect(DB); c.row_factory = sqlite3.Row; c.execute("pragma journal_mode=wal"); return c
 
 def init():
     with conn() as c:
@@ -96,28 +96,50 @@ def with_plant(p):
         p["plant"] = dict(r) if r else None
     return p
 
+_LEGAL = re.compile(r"(?<!\w)(s\.?\s?p\.?\s?a\.?|s\.?\s?r\.?\s?l\.?\s?s?\.?|scarl|soc\.?|societa'?|società|cooperativa|coop\.?)(?!\w)")
+
+def man_key(s):
+    """Ragione sociale senza forma giuridica: 'GRANAROLO S.p.A.' == 'Granarolo spa'."""
+    return " ".join(norm(_LEGAL.sub(" ", (s or "").lower())).split())
+
+def _plant_key(p):
+    if not p.get("plant_code"): return None
+    import plants
+    return plants.canon(p["plant_code"])
+
+def verdict(a, b):
+    """Confronto dei dati di fabbricazione tra due schede -> (livello, testo)."""
+    ka, kb = _plant_key(a), _plant_key(b)
+    name = lambda p: man_key(p.get("manufacturer") or (p.get("plant") or {}).get("name"))   # dichiarato, o dal registro
+    same_man = bool(name(a) and name(a) == name(b))
+    va, vb = (a.get("plant") or {}).get("vat"), (b.get("plant") or {}).get("vat")
+    same_man = same_man or bool(va and va == vb)
+    if ka and kb:
+        if ka == kb: return "stesso_stabilimento", f"Stesso stabilimento: bollo identico ({ka} CE). Prodotti fabbricati nello stesso sito."
+        if same_man: return "stesso_produttore", "Stesso produttore ma stabilimenti diversi: lavorazione e ricetta possono differire."
+        return "diversi", "Stabilimenti e produttori diversi."
+    if same_man: return "da_confermare", "Stesso produttore dichiarato, ma manca il bollo per confermare lo stabilimento."
+    return None, None
+
 def compare(pid):
-    """Prodotti con stesso produttore/stabilimento e stessa categoria + differenze."""
+    """Prodotti dello stesso stabilimento/produttore: stessa categoria in 'matches', altre in 'other_categories'."""
     with conn() as c:
-        p = c.execute("select * from products where id=?", (pid,)).fetchone()
-        if not p: return None
-        p = dict(p)
-        if p["plant_code"]:
-            rows = c.execute("select * from products where id!=? and plant_code=? and category is ?", (pid, p["plant_code"], p["category"])).fetchall()
-            basis = "stesso stabilimento (bollo)"
-        elif p["manufacturer"]:
-            rows = c.execute("select * from products where id!=? and manufacturer=? and category is ?", (pid, p["manufacturer"], p["category"])).fetchall()
-            basis = "stesso produttore (stabilimento non confermato)"
-        else:
-            rows, basis = [], "produttore sconosciuto"
-    res = []
-    for r in map(dict, rows):
-        diff = {}
-        for k in ("ingredients","raw_material_origin","origin_status","price_eur","price_per_unit","size","packaged_in","plant_code"):
-            if (p[k] or None) != (r[k] or None): diff[k] = [p[k], r[k]]
-        same = bool(p["ingredients"] and r["ingredients"] and norm(p["ingredients"]).split() == norm(r["ingredients"]).split())
-        res.append({"product": r, "diff": diff, "identical_ingredients": same if p["ingredients"] and r["ingredients"] else None})
-    return {"product": p, "basis": basis, "matches": res}
+        row = c.execute("select * from products where id=?", (pid,)).fetchone()
+        if not row: return None
+        everything = [dict(r) for r in c.execute("select * from products where id!=?", (pid,))]
+    p = with_plant(dict(row)); res, other = [], []
+    for r in everything:
+        r = with_plant(r); lvl, txt = verdict(p, r)
+        if not lvl or lvl == "diversi": continue
+        if r["category"] != p["category"]:
+            other.append({"id": r["id"], "name": r["name"], "brand": r["brand"], "retailer": r["retailer"],
+                          "category": r["category"], "level": lvl}); continue
+        same = bool(p["ingredients"] and r["ingredients"])
+        res.append({"product": r, "level": lvl, "verdict": txt,
+                    "identical_ingredients": norm(p["ingredients"]).split() == norm(r["ingredients"]).split() if same else None})
+    order = {"stesso_stabilimento": 0, "stesso_produttore": 1, "da_confermare": 2}
+    res.sort(key=lambda m: order[m["level"]]); other.sort(key=lambda m: order[m["level"]])
+    return {"product": p, "matches": res, "other_categories": other}
 
 def off_lookup(code):
     """Open Food Facts (se la rete lo consente). Restituisce dict pronto per insert o None."""
