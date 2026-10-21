@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS products (
   packaged_in TEXT,                -- paese di confezionamento
   manufacturer TEXT, manufacturer_address TEXT, plant_code TEXT, -- bollo CE / stabilimento
   processed_in TEXT,               -- paese di lavorazione
+  nutriscore TEXT, nova INTEGER,   -- A-E (calcolato da Open Food Facts), 1-4
+  kcal_100g REAL, fat_100g REAL, saturated_fat_100g REAL, carbs_100g REAL, sugars_100g REAL,
+  fiber_100g REAL, proteins_100g REAL, salt_100g REAL, additives TEXT, allergens TEXT,
   fao_area TEXT, species TEXT, fishing_method TEXT, fish_note TEXT,
   verification TEXT DEFAULT 'da_verificare', -- verificato|da_verificare|segnalato_utente
   source_url TEXT, source_note TEXT,
@@ -32,9 +35,12 @@ CREATE TABLE IF NOT EXISTS missing (
   id INTEGER PRIMARY KEY, query TEXT, barcode TEXT, retailer TEXT, note TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP, resolved INTEGER DEFAULT 0);
 """
+NUTRITION = ["nutriscore","nova","kcal_100g","fat_100g","saturated_fat_100g","carbs_100g","sugars_100g",
+ "fiber_100g","proteins_100g","salt_100g","additives","allergens"]
+NEW_COLS = {"processed_in": "TEXT", "fishing_method": "TEXT", **{k: ("TEXT" if k in ("nutriscore","additives","allergens") else "INTEGER" if k == "nova" else "REAL") for k in NUTRITION}}
 FIELDS = ["barcode","name","brand","line","retailer","is_private_label","category","size",
  "price_eur","price_per_unit","unit","ingredients","raw_material_origin","origin_status",
- "packaged_in","processed_in","fishing_method","manufacturer","manufacturer_address","plant_code","fao_area","species",
+ "packaged_in","processed_in","fishing_method","nutriscore","nova","kcal_100g","fat_100g","saturated_fat_100g","carbs_100g","sugars_100g","fiber_100g","proteins_100g","salt_100g","additives","allergens","manufacturer","manufacturer_address","plant_code","fao_area","species",
  "fish_note","verification","source_url","source_note"]
 
 # Aree FAO di pesca: nome ufficiale. Il giudizio sulla sostenibilità dipende da specie+area+attrezzo:
@@ -53,8 +59,8 @@ def init():
     with conn() as c:
         c.executescript(SCHEMA)
         have = {r["name"] for r in c.execute("pragma table_info(products)")}   # migrazione di DB creati prima
-        for col in ("processed_in", "fishing_method"):
-            if col not in have: c.execute(f"alter table products add column {col} TEXT")
+        for col, typ in NEW_COLS.items():
+            if col not in have: c.execute(f"alter table products add column {col} {typ}")
         if c.execute("select count(*) from products").fetchone()[0] == 0:
             seed(c)
 
@@ -230,16 +236,9 @@ def off_lookup(code):
     except Exception as e:
         return {"error": str(e)}
     if j.get("status") != 1: return None
-    p = j["product"]
-    emb = p.get("emb_codes") or ""
-    return dict(barcode=code, name=p.get("product_name_it") or p.get("product_name") or code,
-      brand=(p.get("brands") or "").split(",")[0], retailer=(p.get("stores") or "").split(",")[0] or None,
-      category=(p.get("categories_tags") or [""])[-1].split(":")[-1], size=p.get("quantity"),
-      ingredients=p.get("ingredients_text_it") or p.get("ingredients_text"),
-      raw_material_origin=p.get("origins"), packaged_in=p.get("manufacturing_places"),
-      plant_code=emb or None, manufacturer=None, verification="da_verificare",
-      source_url=f"https://world.openfoodfacts.org/product/{code}",
-      source_note="Importato da Open Food Facts (dati collaborativi): verificare con l'etichetta.")
+    import import_off   # stesso mapping dell'import in blocco (bollo normalizzato, nutrizione, ecc.)
+    p = dict(j["product"]); p.setdefault("code", code)
+    return import_off.map_product(p) or {"error": "prodotto senza nome su Open Food Facts"}
 
 class H(BaseHTTPRequestHandler):
     def send(self, obj, code=200):

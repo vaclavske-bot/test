@@ -17,7 +17,8 @@ import plants, server
 from brands import RETAILERS, OWN_BRANDS
 
 FIELDS = ("code,product_name,product_name_it,brands,stores,stores_tags,categories_tags,quantity,"
-          "ingredients_text_it,ingredients_text,origins,origins_tags,manufacturing_places,emb_codes,link,countries_tags")
+          "ingredients_text_it,ingredients_text,origins,origins_tags,manufacturing_places,emb_codes,link,countries_tags,"
+          "nutriments,nutriscore_grade,nova_group,additives_tags,allergens_tags")
 
 def plant_code(raw):
     """Bollo IT in forma canonica 'IT 3 74 CE' (anche alfanumerici, es. 'IT L2K7A CE'); None se assente.
@@ -48,6 +49,23 @@ def retailer_of(p):
         if name.lower() in low: return name
     return None
 
+ALLERGENI = {"milk": "latte", "gluten": "glutine", "eggs": "uova", "nuts": "frutta a guscio", "peanuts": "arachidi",
+ "soybeans": "soia", "fish": "pesce", "crustaceans": "crostacei", "molluscs": "molluschi", "celery": "sedano",
+ "mustard": "senape", "sesame-seeds": "sesamo", "sulphur-dioxide-and-sulphites": "solfiti", "lupin": "lupini"}
+
+def nutrition(p):
+    """Valori per 100 g, Nutri-Score, NOVA, additivi, allergeni da Open Food Facts. Valori assenti -> None (mai 0 inventato)."""
+    n = p.get("nutriments") or {}
+    num = lambda k: float(n[k]) if isinstance(n.get(k), (int, float)) else None
+    ns = (p.get("nutriscore_grade") or "").upper()
+    nova = p.get("nova_group")
+    return dict(nutriscore=ns if ns in list("ABCDE") else None, nova=int(nova) if nova in (1, 2, 3, 4, "1", "2", "3", "4") else None,
+        kcal_100g=num("energy-kcal_100g"), fat_100g=num("fat_100g"), saturated_fat_100g=num("saturated-fat_100g"),
+        carbs_100g=num("carbohydrates_100g"), sugars_100g=num("sugars_100g"), fiber_100g=num("fiber_100g"),
+        proteins_100g=num("proteins_100g"), salt_100g=num("salt_100g"),
+        additives=", ".join(sorted({t.split(":")[-1].upper() for t in p.get("additives_tags") or []})) or None,
+        allergens=", ".join(sorted(ALLERGENI.get(t.split(":")[-1], t.split(":")[-1]) for t in p.get("allergens_tags") or [])) or None)
+
 def map_product(p, retailer=None):
     code = (p.get("code") or "").strip()
     name = (p.get("product_name_it") or p.get("product_name") or "").strip()
@@ -62,9 +80,10 @@ def map_product(p, retailer=None):
         ingredients=p.get("ingredients_text_it") or p.get("ingredients_text"),
         raw_material_origin=p.get("origins"), origin_status=origin_status(p.get("origins_tags"), p.get("origins")),
         packaged_in=p.get("manufacturing_places"), plant_code=plant_code(p.get("emb_codes")),
+        **nutrition(p),
         verification="da_verificare", source_url=f"https://world.openfoodfacts.org/product/{code}",
-        source_note="Importato da Open Food Facts (collaborativo): verificare con l'etichetta. "
-                    "Produttore da risalire dal bollo CE.")
+        source_note="Importato da Open Food Facts (collaborativo, licenza ODbL): verificare con l'etichetta. "
+                    "Nutri-Score e NOVA sono calcolati da Open Food Facts. Produttore da risalire dal bollo CE.")
 
 def upsert(c, d):
     """-> 'new' | 'updated' | 'skipped'"""

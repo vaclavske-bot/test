@@ -31,3 +31,16 @@ with server.conn() as c:
     q = lambda i: c.execute("select is_private_label from products where id=?", (i,)).fetchone()[0]
     assert (q(x), q(y), q(z)) == (1, 0, 1)
 print("OK2")
+# nutrizione: colonne presenti anche dopo la migrazione e salvate dall'import
+with server.conn() as c:
+    assert {"nutriscore", "kcal_100g", "allergens"} <= {r["name"] for r in c.execute("pragma table_info(products)")}
+import import_off as I
+with server.conn() as c:
+    d = I.map_product({"code": "777", "product_name": "Yogurt", "nutriments": {"energy-kcal_100g": 60, "sugars_100g": 5}, "nutriscore_grade": "c"})
+    assert I.upsert(c, d) == "new"
+    r = c.execute("select nutriscore, kcal_100g, sugars_100g, fat_100g from products where barcode='777'").fetchone()
+    assert tuple(r) == ("C", 60.0, 5.0, None)
+    d2 = I.map_product({"code": "777", "product_name": "Yogurt", "nutriments": {"energy-kcal_100g": 99, "fat_100g": 2}})
+    assert I.upsert(c, d2) == "updated"             # completa solo i campi vuoti
+    r = c.execute("select kcal_100g, fat_100g from products where barcode='777'").fetchone(); assert tuple(r) == (60.0, 2.0)
+print("OK3")

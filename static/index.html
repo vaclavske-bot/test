@@ -69,7 +69,7 @@ a{color:var(--ac)}video{width:100%;max-height:260px;border-radius:10px;backgroun
 <p><span class="badge b-y">Media</span> stesso codice stabilimento, ricetta diversa; oppure produttore dedotto da una sola fonte.</p>
 <p><span class="badge b-r">Bassa</span> produttore non verificabile o solo segnalato da utenti.</p>
 <h2>Flusso di ricerca</h2>
-<p>Barcode, poi database interno, poi Open Food Facts (pulsante nel modulo di aggiunta), poi lettura dell’etichetta (bollo ovale, «prodotto da»: da sviluppare). Se non trova nulla: l’utente indica insegna e prodotto, e la scheda entra in coda di verifica.</p>
+<p>Barcode, poi database interno, poi Open Food Facts (fonte aperta, licenza ODbL, anche dei dati nutrizionali; pulsante nel modulo di aggiunta), poi lettura dell’etichetta (bollo ovale, «prodotto da»: da sviluppare). Se non trova nulla: l’utente indica insegna e prodotto, e la scheda entra in coda di verifica.</p>
 </section>
 
 <section id="p4" class="pane">
@@ -102,6 +102,8 @@ const VER={verificato:['✔ verificato','b-g'],da_verificare:['da verificare','b
 const badge=(t,c)=>`<span class="badge ${c}">${esc(t)}</span>`;
 
 /* ---------- vista di un prodotto (stessa per dati reali e demo) ---------- */
+const NUTR=[['kcal_100g','kcal',''],['fat_100g','grassi',' g'],['saturated_fat_100g','di cui saturi',' g'],['carbs_100g','carboidrati',' g'],['sugars_100g','di cui zuccheri',' g'],['fiber_100g','fibre',' g'],['proteins_100g','proteine',' g'],['salt_100g','sale',' g']];
+const nutr=p=>NUTR.filter(([k])=>p[k]!=null).map(([k,l,u])=>`${l} ${Number(p[k]).toFixed(k=='kcal_100g'?0:1)}${u}`).join(' · ')||null;
 function view(p){
   const raw=[ORI[p.origin_status],p.raw_material_origin].filter(Boolean).join(' · ')||null;
   return {title:p.name,sub:[p.brand,p.line].filter((x,i,a)=>x&&a.indexOf(x)===i).join(' '),retailer:p.retailer,
@@ -109,10 +111,12 @@ function view(p){
     prod:p.manufacturer||(p.plant&&p.plant.name)||null,addr:(p.plant&&p.plant.address)||p.manufacturer_address||null,
     ing:p.ingredients,pack:p.packaged_in,proc:p.processed_in,raw,
     price:p.price_eur!=null?'€ '+Number(p.price_eur).toFixed(2)+(p.price_per_unit!=null?` · € ${p.price_per_unit}/${p.unit||''}`:''):null,
+    ns:p.nutriscore?'Nutri-Score '+p.nutriscore:null,nova:p.nova?'NOVA '+p.nova+' (1 = non trasformato, 4 = ultra-trasformato)':null,
+    nutr:nutr(p),add:p.additives,all:p.allergens,
     fish:p.species?[p.species,p.fao_area&&'FAO '+p.fao_area,p.fishing_method].filter(Boolean).join(' · '):null,
     rating:p.species?(p.fish_rating||'none'):undefined,ver:p.verification,src:p.source_url,note:p.source_note,pl:p.is_private_label};
 }
-const ROWS=[['Stabilimento','stab'],['Produttore','prod'],['Indirizzo','addr'],['Ingredienti','ing'],['Confezionato','pack'],['Lavorato','proc'],['Materia prima','raw'],['Prezzo','price'],['Ittico','fish']];
+const ROWS=[['Stabilimento','stab'],['Produttore','prod'],['Indirizzo','addr'],['Ingredienti','ing'],['Confezionato','pack'],['Lavorato','proc'],['Materia prima','raw'],['Prezzo','price'],['Nutri-Score','ns'],['NOVA','nova'],['Per 100 g','nutr'],['Additivi','add'],['Allergeni','all'],['Ittico','fish']];
 function card(v,o){
   const rows=ROWS.filter(([,k])=>v[k]||(o&&o[k])).map(([l,k])=>{
     const dif=o&&v[k]&&o[k]&&String(v[k]).toLowerCase()!==String(o[k]).toLowerCase();
@@ -135,7 +139,7 @@ async function doSearch(q){
   const r=await api('/api/search?q='+encodeURIComponent(q));
   $('#res').innerHTML=r.map(p=>{const v=view(p);return `<div class="card"><h3>${esc(v.title)}</h3><div class="tag">${esc(v.sub)} · ${esc(v.retailer)||'—'} · ${p.is_private_label?'private label':'marchio industriale'}${p.size?' · '+esc(p.size):''}</div>
     <p>${v.prod?'Produttore: <b>'+esc(v.prod)+'</b>':'<span class="mu">Produttore non indicato</span>'}${p.plant_code?' · bollo '+esc(p.plant_code):''}</p>
-    <p>${badge(...(VER[p.verification]||VER.da_verificare))}${v.raw?badge(v.raw,'b-n'):''}</p>
+    <p>${badge(...(VER[p.verification]||VER.da_verificare))}${v.raw?badge(v.raw,'b-n'):''}${v.ns?badge(v.ns,{A:'b-g',B:'b-g',C:'b-y',D:'b-r',E:'b-r'}[p.nutriscore]):''}</p>
     <button class="pri sm" onclick="compare(${p.id})">Confronta con lo stesso produttore</button></div>`}).join('');
   if(!r.length){
     $('#res').innerHTML='<div class="card">Nessun risultato. Aggiungilo qui sotto: la prossima ricerca lo troverà.</div>';
@@ -228,7 +232,7 @@ async function loadLines(){const r=await api('/api/lines');LINES=r.lines;
   $('#stats').textContent=`${r.stats.products} prodotti · ${r.stats.with_plant} con bollo CE · ${r.stats.plants_registry} stabilimenti nel registro del Ministero · ${r.stats.fish_ratings} giudizi ittici.`;}
 
 /* ---------- scheda dati ---------- */
-const S=[["Prodotto","EAN, nome, marca, linea, categoria, formato, ingredienti, allergeni, foto etichetta","Parziale: mancano allergeni e foto"],
+const S=[["Prodotto","EAN, nome, marca, linea, categoria, formato, ingredienti, allergeni, valori nutrizionali, Nutri-Score, NOVA, additivi, foto etichetta","Parziale: nutrizione, additivi e allergeni da Open Food Facts; manca la foto"],
 ["Insegna","id, nome, formato (super, discount), sito","Parziale: nome insegna sul prodotto, elenco in brands.py"],
 ["Linea","id, insegna, nome linea, tipo (bio, base, premium)","Parziale: nome linea sul prodotto"],
 ["Prezzo","prodotto, insegna, data, prezzo, prezzo/kg o /l, fonte (utente, volantino)","Parziale: un prezzo per prodotto, senza storico"],

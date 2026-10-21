@@ -10,6 +10,10 @@ assert I.origin_status(["en:italy","en:france"], "") == "misto"
 import json
 prods = json.load(open(os.path.join(os.path.dirname(__file__), "off_fixture.json")))["products"]
 d = I.map_product(prods[0]); assert d["is_private_label"] == 1 and d["retailer"] == "Conad" and d["plant_code"] == "IT 3 74 CE"
+assert (d["nutriscore"], d["nova"], d["kcal_100g"], d["salt_100g"], d["additives"], d["allergens"]) == ("B", 1, 47.0, 0.1, "E300, E330", "latte")
+assert d["fiber_100g"] is None                      # assente in origine -> None, non 0
+n2 = I.map_product(prods[1]); assert n2["nutriscore"] is None and n2["nova"] is None and n2["kcal_100g"] is None and n2["additives"] is None
+assert I.nutrition({"nutriscore_grade": "unknown", "nova_group": 9})["nutriscore"] is None and I.nutrition({"nova_group": 9})["nova"] is None
 assert I.map_product(prods[2])["is_private_label"] == 0 and I.map_product(prods[2])["retailer"] == "Coop"
 assert I.map_product(prods[3]) is None
 server.init()
