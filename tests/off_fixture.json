@@ -1,0 +1,6 @@
+{"products":[
+{"code":"9990000000011","product_name":"Latte intero biologico","brands":"Conad,Verso Natura","stores":"Conad","stores_tags":["conad"],"categories_tags":["en:dairies","en:milks"],"quantity":"1 L","origins":"Italia","origins_tags":["en:italy"],"emb_codes":"IT 03 74 CE","countries_tags":["en:italy"]},
+{"code":"9990000000028","product_name_it":"Passata di pomodoro","brands":"Eurospin,Land","stores_tags":["eurospin"],"categories_tags":["en:tomato-sauces"],"origins":"UE e non UE","origins_tags":["en:european-union","en:non-eu-agriculture"],"emb_codes":"it 2 123 ce"},
+{"code":"9990000000035","product_name":"Biscotti","brands":"Barilla","stores":"Lidl, Coop","stores_tags":["lidl","coop"],"origins_tags":[]},
+{"code":"9990000000042","product_name":"","brands":"x"},
+{"code":"8000000000000","product_name":"Test verificato","stores_tags":["conad"]}]}

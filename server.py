@@ -1,0 +1,196 @@
+"""Private Label Finder - server (solo libreria standard, SQLite)."""
+import json, sqlite3, os, re, urllib.request, urllib.parse
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+DB = os.environ.get("PL_DB", os.path.join(os.path.dirname(__file__), "pl.db"))
+STATIC = os.path.join(os.path.dirname(__file__), "static")
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY, barcode TEXT UNIQUE, name TEXT NOT NULL, brand TEXT,
+  line TEXT, retailer TEXT, is_private_label INTEGER DEFAULT 0, category TEXT,
+  size TEXT, price_eur REAL, price_per_unit REAL, unit TEXT,
+  ingredients TEXT,
+  raw_material_origin TEXT,        -- testo dichiarato in etichetta
+  origin_status TEXT DEFAULT 'non_dichiarata', -- italia|ue|extra_ue|misto|non_dichiarata
+  packaged_in TEXT,                -- paese di confezionamento
+  manufacturer TEXT, manufacturer_address TEXT, plant_code TEXT, -- bollo CE / stabilimento
+  fao_area TEXT, species TEXT, fish_note TEXT,
+  verification TEXT DEFAULT 'da_verificare', -- verificato|da_verificare|segnalato_utente
+  source_url TEXT, source_note TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX IF NOT EXISTS ix_prod_man ON products(manufacturer, category);
+CREATE INDEX IF NOT EXISTS ix_prod_plant ON products(plant_code);
+CREATE TABLE IF NOT EXISTS plants (
+  key TEXT PRIMARY KEY, approval TEXT, name TEXT, vat TEXT, tax_code TEXT, address TEXT, sections TEXT, activities TEXT);
+CREATE TABLE IF NOT EXISTS missing (
+  id INTEGER PRIMARY KEY, query TEXT, barcode TEXT, retailer TEXT, note TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP, resolved INTEGER DEFAULT 0);
+"""
+FIELDS = ["barcode","name","brand","line","retailer","is_private_label","category","size",
+ "price_eur","price_per_unit","unit","ingredients","raw_material_origin","origin_status",
+ "packaged_in","manufacturer","manufacturer_address","plant_code","fao_area","species",
+ "fish_note","verification","source_url","source_note"]
+
+# Aree FAO di pesca: nome ufficiale. Il giudizio sulla sostenibilità dipende da specie+area+attrezzo:
+# NON è codificato qui; va inserito con fonte (MSC, GFCM/STECF, Good Fish Guide, ecc.).
+FAO_AREAS = {"21":"Atlantico nord-occidentale","27":"Atlantico nord-orientale","31":"Atlantico centro-occidentale",
+ "34":"Atlantico centro-orientale","37":"Mediterraneo e Mar Nero (37.1 occ., 37.2 centr., 37.3 or.)",
+ "41":"Atlantico sud-occidentale","47":"Atlantico sud-orientale","51":"Oceano Indiano occidentale",
+ "57":"Oceano Indiano orientale","61":"Pacifico nord-occidentale","67":"Pacifico nord-orientale",
+ "71":"Pacifico centro-occidentale","77":"Pacifico centro-orientale","81":"Pacifico sud-occidentale",
+ "87":"Pacifico sud-orientale"}
+
+def conn():
+    c = sqlite3.connect(DB); c.row_factory = sqlite3.Row; return c
+
+def init():
+    with conn() as c:
+        c.executescript(SCHEMA)
+        if c.execute("select count(*) from products").fetchone()[0] == 0:
+            seed(c)
+
+def seed(c):
+    """Solo dati con fonte verificata. Aggiungere altri tramite import/segnalazioni."""
+    rows = [dict(name="Latte parzialmente scremato biologico 1 L", brand="Conad", line="Verso Natura Bio",
+      retailer="Conad", is_private_label=1, category="latte", size="1 L",
+      manufacturer="Granarolo S.p.A.", manufacturer_address="Via Cadriano 27/2, Bologna",
+      verification="verificato",
+      source_url="https://spesaonline.conad.it/p/conad-verso-natura-latte-parzialmente-scremato-biologico-1-l--401468",
+      source_note="Scheda Conad: 'Prodotto per Conad S.C., Bologna - da Granarolo S.p.A., Via Cadriano 27/2'. Origine materia prima e bollo CE da leggere in etichetta."),
+     dict(name="Latte parzialmente scremato biologico 1 L", brand="Granarolo", line="Bio",
+      retailer="(multi-insegna)", is_private_label=0, category="latte", size="1 L",
+      manufacturer="Granarolo S.p.A.", manufacturer_address="Via Cadriano 27/2, Bologna",
+      verification="da_verificare",
+      source_note="Marchio del produttore. Dati di etichetta (bollo, origine latte, prezzo) da inserire.")]
+    for r in rows: insert(c, r)
+
+def insert(c, d):
+    d = {k: d.get(k) for k in FIELDS if d.get(k) not in (None, "")}
+    if d.get("plant_code"):
+        import plants   # import locale: plants importa server
+        d["plant_code"] = plants.display(plants.canon(d["plant_code"])) or d["plant_code"]
+    cols = ",".join(d); q = ",".join("?" * len(d))
+    cur = c.execute(f"insert into products ({cols}) values ({q})", list(d.values()))
+    return cur.lastrowid
+
+def norm(s): return re.sub(r"[^a-z0-9àèéìòù ]", " ", (s or "").lower())
+
+def search(q):
+    q = norm(q).split()
+    if not q: return []
+    with conn() as c:
+        rows = c.execute("select * from products").fetchall()
+    out = []
+    for r in rows:
+        hay = norm(" ".join(str(r[k] or "") for k in ("name","brand","line","retailer","manufacturer","category","barcode","plant_code")))
+        if all(t in hay for t in q): out.append(dict(r))
+    return [with_plant(p) for p in out[:50]]
+
+def with_plant(p):
+    """Aggiunge lo stabilimento dal registro ufficiale (se caricato e se il bollo è noto)."""
+    if p.get("plant_code"):
+        import plants
+        with conn() as c:
+            r = c.execute("select name, vat, address, sections from plants where key=?", (plants.canon(p["plant_code"]),)).fetchone()
+        p["plant"] = dict(r) if r else None
+    return p
+
+def compare(pid):
+    """Prodotti con stesso produttore/stabilimento e stessa categoria + differenze."""
+    with conn() as c:
+        p = c.execute("select * from products where id=?", (pid,)).fetchone()
+        if not p: return None
+        p = dict(p)
+        if p["plant_code"]:
+            rows = c.execute("select * from products where id!=? and plant_code=? and category is ?", (pid, p["plant_code"], p["category"])).fetchall()
+            basis = "stesso stabilimento (bollo)"
+        elif p["manufacturer"]:
+            rows = c.execute("select * from products where id!=? and manufacturer=? and category is ?", (pid, p["manufacturer"], p["category"])).fetchall()
+            basis = "stesso produttore (stabilimento non confermato)"
+        else:
+            rows, basis = [], "produttore sconosciuto"
+    res = []
+    for r in map(dict, rows):
+        diff = {}
+        for k in ("ingredients","raw_material_origin","origin_status","price_eur","price_per_unit","size","packaged_in","plant_code"):
+            if (p[k] or None) != (r[k] or None): diff[k] = [p[k], r[k]]
+        same = bool(p["ingredients"] and r["ingredients"] and norm(p["ingredients"]).split() == norm(r["ingredients"]).split())
+        res.append({"product": r, "diff": diff, "identical_ingredients": same if p["ingredients"] and r["ingredients"] else None})
+    return {"product": p, "basis": basis, "matches": res}
+
+def off_lookup(code):
+    """Open Food Facts (se la rete lo consente). Restituisce dict pronto per insert o None."""
+    url = f"https://world.openfoodfacts.org/api/v2/product/{urllib.parse.quote(code)}.json"
+    req = urllib.request.Request(url, headers={"User-Agent": "PrivateLabelFinder/0.1"})
+    try:
+        j = json.load(urllib.request.urlopen(req, timeout=10))
+    except Exception as e:
+        return {"error": str(e)}
+    if j.get("status") != 1: return None
+    p = j["product"]
+    emb = p.get("emb_codes") or ""
+    return dict(barcode=code, name=p.get("product_name_it") or p.get("product_name") or code,
+      brand=(p.get("brands") or "").split(",")[0], retailer=(p.get("stores") or "").split(",")[0] or None,
+      category=(p.get("categories_tags") or [""])[-1].split(":")[-1], size=p.get("quantity"),
+      ingredients=p.get("ingredients_text_it") or p.get("ingredients_text"),
+      raw_material_origin=p.get("origins"), packaged_in=p.get("manufacturing_places"),
+      plant_code=emb or None, manufacturer=None, verification="da_verificare",
+      source_url=f"https://world.openfoodfacts.org/product/{code}",
+      source_note="Importato da Open Food Facts (dati collaborativi): verificare con l'etichetta.")
+
+class H(BaseHTTPRequestHandler):
+    def send(self, obj, code=200):
+        b = json.dumps(obj, ensure_ascii=False).encode()
+        self.send_response(code); self.send_header("Content-Type","application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
+    def body(self):
+        return json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0)) or 0) or "{}")
+    def do_GET(self):
+        u = urllib.parse.urlparse(self.path); qs = urllib.parse.parse_qs(u.query)
+        if u.path == "/api/search": return self.send(search(qs.get("q", [""])[0]))
+        if u.path == "/api/barcode":
+            with conn() as c:
+                r = c.execute("select * from products where barcode=?", (qs.get("code", [""])[0],)).fetchone()
+            return self.send(dict(r) if r else None)
+        m = re.fullmatch(r"/api/compare/(\d+)", u.path)
+        if m:
+            r = compare(int(m[1])); return self.send(r, 200 if r else 404)
+        if u.path == "/api/fao": return self.send(FAO_AREAS)
+        if u.path == "/api/missing":
+            with conn() as c: return self.send([dict(r) for r in c.execute("select * from missing where resolved=0 order by id desc")])
+        path = "index.html" if u.path == "/" else u.path.lstrip("/")
+        f = os.path.normpath(os.path.join(STATIC, path))
+        if f.startswith(STATIC) and os.path.isfile(f):
+            b = open(f, "rb").read(); self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8" if f.endswith(".html") else "application/octet-stream")
+            self.end_headers(); return self.wfile.write(b)
+        self.send({"error": "not found"}, 404)
+    def do_POST(self):
+        d = self.body()
+        if self.path == "/api/product":
+            if not d.get("name"): return self.send({"error": "name richiesto"}, 400)
+            d.setdefault("verification", "segnalato_utente")
+            with conn() as c:
+                try: pid = insert(c, d)
+                except sqlite3.IntegrityError: return self.send({"error": "barcode già presente"}, 409)
+                if d.get("barcode"): c.execute("update missing set resolved=1 where barcode=?", (d["barcode"],))
+            return self.send({"id": pid}, 201)
+        if self.path == "/api/missing":
+            with conn() as c:
+                c.execute("insert into missing(query,barcode,retailer,note) values (?,?,?,?)",
+                          (d.get("query"), d.get("barcode"), d.get("retailer"), d.get("note")))
+            return self.send({"ok": True}, 201)
+        if self.path == "/api/import-off":
+            r = off_lookup(d.get("barcode", ""))
+            if r is None: return self.send({"error": "non trovato su Open Food Facts"}, 404)
+            if "error" in r: return self.send(r, 502)
+            return self.send(r)   # precompila il form; l'utente conferma con POST /api/product
+        self.send({"error": "not found"}, 404)
+    def log_message(self, *a): pass
+
+if __name__ == "__main__":
+    init()
+    port = int(os.environ.get("PORT", 8000))
+    print(f"http://localhost:{port}")
+    ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
