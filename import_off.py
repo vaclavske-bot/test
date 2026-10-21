@@ -5,10 +5,14 @@ Uso:
   python3 import_off.py --all --max-pages 20                    # tutte le insegne
   python3 import_off.py --fixture tests/off_fixture.json --dry-run   # prova offline
 Opzioni: --dry-run (non scrive), --page-size N, --sleep SECONDI.
+Login opzionale su Open Food Facts (le credenziali NON vanno scritte nel codice: il repo è pubblico):
+  export OFF_USER=mio_utente OFF_PASSWORD='...'   # oppure --user mio_utente e la password viene chiesta da tastiera
+  python3 import_off.py --retailer conad --user mio_utente
+  --host it.openfoodfacts.org (predefinito) | world.openfoodfacts.org
 Regole: non sovrascrive mai schede 'verificato'; completa solo i campi vuoti delle altre.
 Dati OFF = collaborativi: tutto entra come 'da_verificare'.
 """
-import argparse, json, re, sys, time, urllib.parse, urllib.request
+import argparse, getpass, http.cookiejar, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 import plants, server
 
 # tag OFF dell'insegna -> nome visualizzato
@@ -86,13 +90,32 @@ def upsert(c, d):
               [*fill.values(), row["id"]])
     return "updated"
 
+HOST = "it.openfoodfacts.org"
+UA = {"User-Agent": "PrivateLabelFinder/0.1 (studio personale)"}
+_opener = urllib.request.build_opener()   # sostituito da login() con uno che conserva i cookie di sessione
+
+def login(host, user, password):
+    """Accede a Open Food Facts (POST /cgi/session.pl) e conserva il cookie di sessione. -> True/False."""
+    global _opener
+    jar = http.cookiejar.CookieJar()
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    body = urllib.parse.urlencode({"user_id": user, "password": password, ".submit": "Sign in"}).encode()
+    try:
+        op.open(urllib.request.Request(f"https://{host}/cgi/session.pl", data=body, headers=UA), timeout=30).read()
+    except urllib.error.HTTPError as e:
+        print(f"login rifiutato (HTTP {e.code})", file=sys.stderr); return False
+    except Exception as e:
+        print(f"login non riuscito: {e}", file=sys.stderr); return False
+    if not any(c.name == "session" and c.value for c in jar):
+        print("login non riuscito: utente o password errati", file=sys.stderr); return False
+    _opener = op; return True
+
 def fetch_page(store_tag, page, size):
     qs = urllib.parse.urlencode({"stores_tags": store_tag, "countries_tags_en": "italy", "fields": FIELDS,
                                  "page": page, "page_size": size, "sort_by": "unique_scans_n"})
-    req = urllib.request.Request("https://world.openfoodfacts.org/api/v2/search?" + qs,
-                                 headers={"User-Agent": "PrivateLabelFinder/0.1 (studio personale)"})
+    req = urllib.request.Request(f"https://{HOST}/api/v2/search?" + qs, headers=UA)
     for attempt in range(3):
-        try: return json.load(urllib.request.urlopen(req, timeout=30)).get("products", [])
+        try: return json.load(_opener.open(req, timeout=30)).get("products", [])
         except Exception as e:
             print(f"  errore pagina {page}: {e} (tentativo {attempt+1}/3)", file=sys.stderr); time.sleep(5 * (attempt + 1))
     return None
@@ -111,12 +134,20 @@ def run(products_iter, dry):
     print(stats, f"| con bollo CE: {withplant}", "(dry-run)" if dry else "")
 
 def main():
+    global HOST
     a = argparse.ArgumentParser()
     a.add_argument("--retailer", choices=RETAILERS); a.add_argument("--all", action="store_true")
     a.add_argument("--max-pages", type=int, default=5); a.add_argument("--page-size", type=int, default=100)
     a.add_argument("--sleep", type=float, default=7, help="pausa tra richieste (OFF: max ~10 ricerche/minuto)")
     a.add_argument("--fixture"); a.add_argument("--dry-run", action="store_true")
+    a.add_argument("--host", default=HOST); a.add_argument("--user", default=os.environ.get("OFF_USER"),
+                   help="utente Open Food Facts (o variabile OFF_USER)")
     a = a.parse_args()
+    HOST = a.host
+    if a.user and not a.fixture:
+        pw = os.environ.get("OFF_PASSWORD") or getpass.getpass(f"Password Open Food Facts per {a.user}: ")
+        if not login(a.host, a.user, pw): sys.exit(1)
+        print(f"login effettuato come {a.user}")
     if a.fixture:
         data = json.load(open(a.fixture)); return run(((p, None) for p in data["products"]), a.dry_run)
     if not (a.retailer or a.all): sys.exit("Specifica --retailer X oppure --all")

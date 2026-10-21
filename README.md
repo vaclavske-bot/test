@@ -11,6 +11,8 @@ Serve solo Python 3. Il database (pl.db) si crea al primo avvio.
     python3 import_off.py --retailer conad --max-pages 5
     python3 import_off.py --all --max-pages 20
     python3 import_off.py --retailer lidl --dry-run
+    # con login Open Food Facts (credenziali mai nel codice):
+    export OFF_USER=mio_utente; export OFF_PASSWORD='...'   # oppure --user mio_utente (password chiesta da tastiera)
 
 ## Test
     PYTHONPATH=. python3 tests/test_import.py
